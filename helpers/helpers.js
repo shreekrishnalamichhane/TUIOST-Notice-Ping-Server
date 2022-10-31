@@ -27,8 +27,18 @@ let helpers = {
             return false
         }
     },
+    appendFile: (path, newContent) => {
+        try {
+            fs.appendFileSync(path, newContent);
+            return true
+        } catch (err) {
+            console.error("Append File Error : ", err)
+            return false
+        }
+    },
     fetchData: async (type = "notice") => {
         try {
+            helpers.log('Fetch : ' + type)
             const res = await axios.get(process.env.LOOKUP_URL + "watch/" + type);
             return res.data
         } catch (err) {
@@ -51,7 +61,7 @@ let helpers = {
             + " " + ((d.getHours() > 12) ? helpers.twoDigit(helpers.from0To12(d.getHours() - 12)) : helpers.twoDigit(helpers.from0To12(d.getHours())))
             + ":" + helpers.twoDigit(d.getMinutes()) + " " + helpers.AMPM(d.getHours())
 
-        await hook.send("@everyone New Event")
+        await hook.send("@everyone")
         const embed = new MessageBuilder()
             .setTitle(title)
             .setAuthor('TUIOST', 'https://www.tuiost.edu.np/favicon/apple-icon-180x180.png', 'https://www.tuiost.edu.np/')
@@ -72,16 +82,23 @@ let helpers = {
         return A.filter(a => !B.map(b => b.hash).includes(a.hash))
     },
     dispatcher: (data, type, delay = 2000) => {
+        helpers.log(type + ' , Count : ' + data.length)
         data.reverse().forEach(d => {
-            console.log(d)
+            helpers.log('Title : ' + d.title)
             helpers.pingDiscord(d.title, "", d.link, type)
         })
     },
     cacheHit: (type, newData, oldData) => {
+        helpers.log('Cache Hit.')
         let data = helpers.diffArray(newData, oldData)
+        if (data.length > 0) {
+            helpers.writeFile('./cache/' + type + '.json', newData)
+            console.log('Cache Overwrite | ', type)
+        }
         helpers.dispatcher(data, type)
     },
     cacheMiss: (type, data) => {
+        helpers.log('Cache Miss.')
         if (helpers.writeFile('./cache/' + type + '.json', data)) {
             helpers.dispatcher(data, type)
         }
@@ -95,6 +112,7 @@ let helpers = {
                     helpers.cacheHit(type, data.data, cache)
                 }
                 catch (err) {
+                    helpers.log("Unable to parse the cache" + err)
                     console.log("Unable to parse the cache", err)
                     helpers.cacheMiss(type, data.data)
                 }
@@ -105,11 +123,21 @@ let helpers = {
     },
     job: async () => {
         setInterval(async () => {
+            helpers.log('Watch Started.')
             await helpers.watch('notice')
             await helpers.watch('result')
             await helpers.watch('schedule')
             return true
         }, process.env.LOOKUP_INTERVAL || 60000)
+    },
+    log: async (message) => {
+        const d = new Date()
+        let date = days[d.getDay()] + ", " + months[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear()
+            + " " + ((d.getHours() > 12) ? helpers.twoDigit(helpers.from0To12(d.getHours() - 12)) : helpers.twoDigit(helpers.from0To12(d.getHours())))
+            + ":" + helpers.twoDigit(d.getMinutes()) + ":" + helpers.twoDigit(d.getSeconds()) + " " + helpers.AMPM(d.getHours())
+        let msg = "[" + date + "] " + message + "\n"
+        helpers.appendFile('./log/log', msg)
+        console.log(msg);
     }
 }
 
