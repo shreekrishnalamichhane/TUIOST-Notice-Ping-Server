@@ -38,8 +38,9 @@ let helpers = {
     },
     fetchData: async (type = "notice") => {
         try {
-            helpers.log('Fetch : ' + type)
+            helpers.log('Fetch Started : ' + type)
             const res = await axios.get(process.env.LOOKUP_URL + "watch/" + type);
+            helpers.log('Fetch Completed : ' + type)
             return res.data
         } catch (err) {
             console.log("Fetch Data Error : ", err)
@@ -89,21 +90,21 @@ let helpers = {
         })
     },
     cacheHit: (type, newData, oldData) => {
-        helpers.log('Cache Hit.')
         let data = helpers.diffArray(newData, oldData)
         if (data.length > 0) {
             helpers.writeFile('./cache/' + type + '.json', newData)
-            console.log('Cache Overwrite | ', type)
+            helpers.log("Cache Overwrite : " + type)
         }
         helpers.dispatcher(data, type)
     },
     cacheMiss: (type, data) => {
-        helpers.log('Cache Miss.')
         if (helpers.writeFile('./cache/' + type + '.json', data)) {
+            helpers.log("New Cache Write : " + type)
             helpers.dispatcher(data, type)
         }
     },
     watch: async (type) => {
+        helpers.log('Watching : ' + type)
         const data = await helpers.fetchData(type)
         if (data.success && data.statusCode) {
             const cache = helpers.readFile("./cache/" + type + ".json")
@@ -113,7 +114,6 @@ let helpers = {
                 }
                 catch (err) {
                     helpers.log("Unable to parse the cache" + err)
-                    console.log("Unable to parse the cache", err)
                     helpers.cacheMiss(type, data.data)
                 }
             } else {
@@ -122,13 +122,11 @@ let helpers = {
         }
     },
     job: async () => {
-        setInterval(async () => {
-            helpers.log('Watch Started.')
-            await helpers.watch('notice')
-            await helpers.watch('result')
-            await helpers.watch('schedule')
-            return true
-        }, process.env.LOOKUP_INTERVAL || 60000)
+        await helpers.watch('notice')
+        await helpers.watch('result')
+        await helpers.watch('schedule')
+        helpers.log('>>> TimeOut : ' + (process.env.LOOKUP_INTERVAL || 300000) / 1000 / 60 + " minutes")
+        setTimeout(helpers.job, process.env.LOOKUP_INTERVAL || 300000) // Default is 5 minutes
     },
     log: async (message) => {
         const d = new Date()
