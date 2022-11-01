@@ -136,6 +136,9 @@ let helpers = {
         let msg = "[" + date + "] " + message + "\n"
         helpers.appendFile('./log/log', msg)
         console.log(msg);
+    },
+    initPing: async (message = "Ping Server Initialized..") => {
+        await hook.send(message)
     }
 }
 
