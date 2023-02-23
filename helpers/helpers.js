@@ -39,7 +39,7 @@ let helpers = {
     fetchData: async (type = "notice") => {
         try {
             helpers.log('Fetch Started : ' + type)
-            const res = await axios.get(process.env.LOOKUP_URL + "watch/" + type);
+            const res = await axios.get(process.env.LOOKUP_URL + type + "/watch");
             helpers.log('Fetch Completed : ' + type)
             return res.data
         } catch (err) {
