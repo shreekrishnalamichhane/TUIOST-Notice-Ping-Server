@@ -4,4 +4,8 @@ services:
     env_file:
       - ./.env
     build: ./
+    volumes:
+      - ping:/app/cache
     restart: on-failure
+volumes:
+  ping: {}
