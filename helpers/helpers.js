@@ -9,6 +9,15 @@ const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 let helpers = {
+    existsFile: (path) => {
+        try {
+            const data = fs.existsSync(path, 'utf8')
+            return data
+        } catch (err) {
+            console.error("Read File Error : ", err)
+            return false
+        }
+    },
     readFile: (path) => {
         try {
             const data = fs.readFileSync(path, 'utf8')
@@ -39,7 +48,7 @@ let helpers = {
     fetchData: async (type = "notice") => {
         try {
             helpers.log('Fetch Started : ' + type)
-            const res = await axios.get(process.env.LOOKUP_URL + type + "/watch");
+            const res = await axios.get(process.env.LOOKUP_URL + type);
             helpers.log('Fetch Completed : ' + type)
             return res.data
         } catch (err) {
@@ -61,13 +70,12 @@ let helpers = {
         let date = days[d.getDay()] + ", " + months[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear()
             + " " + ((d.getHours() > 12) ? helpers.twoDigit(helpers.from0To12(d.getHours() - 12)) : helpers.twoDigit(helpers.from0To12(d.getHours())))
             + ":" + helpers.twoDigit(d.getMinutes()) + " " + helpers.AMPM(d.getHours())
-
-        await hook.send("@everyone")
         const embed = new MessageBuilder()
+            .setText("@everyone")
             .setTitle(title)
             .setAuthor('TUIOST', 'https://www.tuiost.edu.np/favicon/apple-icon-180x180.png', 'https://www.tuiost.edu.np/')
             .setURL(url)
-            .addField('Author:', '[TUIOST](https://tuiost.edu.np)')
+            .addField('Author:', '[TUIOST](https://iost.tu.edu.np)')
             .addField('Notice Link:', '[Click here](' + url + ')')
             .addField('Type:', type.toUpperCase())
             .addField('Published At:', date)
@@ -84,9 +92,9 @@ let helpers = {
     },
     dispatcher: (data, type, delay = 2000) => {
         helpers.log(type + ' , Count : ' + data.length)
-        data.reverse().forEach(d => {
+        data.reverse().forEach(async d => {
             helpers.log('Title : ' + d.title)
-            helpers.pingDiscord(d.title, "", d.link, type)
+            await helpers.pingDiscord(d.title, "", d.link, type)
         })
     },
     cacheHit: (type, newData, oldData) => {
@@ -104,10 +112,9 @@ let helpers = {
         }
     },
     watch: async (type) => {
-        helpers.log('Watching : ' + type)
         const data = await helpers.fetchData(type)
         if (data.success && data.statusCode) {
-            const cache = helpers.readFile("./cache/" + type + ".json")
+            const cache = helpers.existsFile("./cache/" + type + ".json") && helpers.readFile("./cache/" + type + ".json")
             if (cache) {
                 try {
                     helpers.cacheHit(type, data.data, cache)
@@ -123,8 +130,6 @@ let helpers = {
     },
     job: async () => {
         await helpers.watch('notice')
-        await helpers.watch('result')
-        await helpers.watch('schedule')
         helpers.log('>>> TimeOut : ' + (process.env.LOOKUP_INTERVAL || 300000) / 1000 / 60 + " minutes")
         setTimeout(helpers.job, process.env.LOOKUP_INTERVAL || 300000) // Default is 5 minutes
     },
@@ -133,8 +138,8 @@ let helpers = {
         let date = days[d.getDay()] + ", " + months[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear()
             + " " + ((d.getHours() > 12) ? helpers.twoDigit(helpers.from0To12(d.getHours() - 12)) : helpers.twoDigit(helpers.from0To12(d.getHours())))
             + ":" + helpers.twoDigit(d.getMinutes()) + ":" + helpers.twoDigit(d.getSeconds()) + " " + helpers.AMPM(d.getHours())
-        let msg = "[" + date + "] " + message + "\n"
-        helpers.appendFile('./log/log', msg)
+        let msg = "[" + date + "] " + message;
+        helpers.appendFile('./log/log', msg + "\n")
         console.log(msg);
     },
     initPing: async (message = "Ping Server Initialized..") => {

@@ -5,7 +5,8 @@ services:
       - ./.env
     build: ./
     volumes:
-      - ping:/app/cache
+      - ./cache:/app/cache
+      - ./log:/app/log
     restart: on-failure
 volumes:
   ping: {}
