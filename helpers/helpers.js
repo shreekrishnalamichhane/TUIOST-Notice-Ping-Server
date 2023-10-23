@@ -1,12 +1,18 @@
 const fs = require('fs');
 const axios = require('axios');
+const moment = require('moment');
 require('dotenv').config()
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
+const { exit } = require('process');
 
-const hook = new Webhook(process.env.DISCORD_WEBHOOK);
+const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK;
+const LOOKUP_URL = process.env.LOOKUP_URL;
+const LOOKUP_INTERVAL = process.env.LOOKUP_INTERVAL || 30000;
+const SHORTURL_API = process.env.SHORTURL_API;
+const SHORTURL_API_KEY = process.env.SHORTURL_API_KEY;
+const SHORTURL_API_DOMAIN_ID = process.env.SHORTURL_API_DOMAIN_ID;
 
-const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const hook = new Webhook(DISCORD_WEBHOOK);
 
 let helpers = {
     existsFile: (path) => {
@@ -56,27 +62,26 @@ let helpers = {
             return false
         }
     },
-    twoDigit: (n) => {
-        return (n < 10) ? "0" + n : n;
-    },
-    from0To12: (n) => {
-        return n == 0 ? 12 : n
-    },
-    AMPM: (n) => {
-        return n < 12 ? "AM" : "PM"
+    generateShortURL: async (url) => {
+        const shortUrl = await axios.post(SHORTURL_API + "links", { url, domain_id: SHORTURL_API_DOMAIN_ID }, {
+            headers: {
+                Authorization: `Bearer ${SHORTURL_API_KEY}`
+            }
+        });
+
+        return shortUrl.data.data.short_url;
     },
     pingDiscord: async (title, description, url, type) => {
-        const d = new Date()
-        let date = days[d.getDay()] + ", " + months[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear()
-            + " " + ((d.getHours() > 12) ? helpers.twoDigit(helpers.from0To12(d.getHours() - 12)) : helpers.twoDigit(helpers.from0To12(d.getHours())))
-            + ":" + helpers.twoDigit(d.getMinutes()) + " " + helpers.AMPM(d.getHours())
+        const shortUrl = await helpers.generateShortURL(url);
+        const date = moment().format('dddd, MMM Do YYYY, hh:mm:ss A');
+
         const embed = new MessageBuilder()
             .setText("@everyone")
             .setTitle(title)
             .setAuthor('TUIOST', 'https://www.tuiost.edu.np/favicon/apple-icon-180x180.png', 'https://www.tuiost.edu.np/')
-            .setURL(url)
+            .setURL(shortUrl)
             .addField('Author:', '[TUIOST](https://iost.tu.edu.np)')
-            .addField('Notice Link:', '[Click here](' + url + ')')
+            .addField('Notice Link:', shortUrl)
             .addField('Type:', type.toUpperCase())
             .addField('Published At:', date)
             .setColor('#f48200')
@@ -84,7 +89,7 @@ let helpers = {
             .setDescription(description)
             // .setImage('https://cdn.discordapp.com/embed/avatars/0.png')
             .setTimestamp()
-            .setFooter('Plugin By : uniksk#2391 ', 'https://cdn.discordapp.com/embed/avatars/0.png')
+            .setFooter('Plugin By : uniksk ', 'https://cdn.discordapp.com/embed/avatars/0.png')
         return await hook.send(embed);
     },
     diffArray: (A, B) => {
@@ -134,16 +139,21 @@ let helpers = {
         setTimeout(helpers.job, process.env.LOOKUP_INTERVAL || 300000) // Default is 5 minutes
     },
     log: async (message) => {
-        const d = new Date()
-        let date = days[d.getDay()] + ", " + months[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear()
-            + " " + ((d.getHours() > 12) ? helpers.twoDigit(helpers.from0To12(d.getHours() - 12)) : helpers.twoDigit(helpers.from0To12(d.getHours())))
-            + ":" + helpers.twoDigit(d.getMinutes()) + ":" + helpers.twoDigit(d.getSeconds()) + " " + helpers.AMPM(d.getHours())
+        const date = moment().format('dddd, MMM Do YYYY, hh:mm:ss A');
         let msg = "[" + date + "] " + message;
         helpers.appendFile('./log/log', msg + "\n")
         console.log(msg);
     },
     initPing: async (message = "Ping Server Initialized..") => {
         await hook.send(message)
+    },
+    testCreds: async () => {
+        if (!DISCORD_WEBHOOK || !LOOKUP_URL || !LOOKUP_INTERVAL || !SHORTURL_API || !SHORTURL_API_KEY || !SHORTURL_API_DOMAIN_ID) {
+            console.log("Please provide all the required credentials in .env file");
+            helpers.log("Please provide all the required credentials in .env file");
+            await helpers.initPing("Please provide all the required credentials in .env file");
+            exit(1);
+        }
     }
 }
 
