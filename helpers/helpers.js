@@ -11,6 +11,7 @@ const LOOKUP_INTERVAL = process.env.LOOKUP_INTERVAL || 30000;
 const SHORTURL_API = process.env.SHORTURL_API;
 const SHORTURL_API_KEY = process.env.SHORTURL_API_KEY;
 const SHORTURL_API_DOMAIN_ID = process.env.SHORTURL_API_DOMAIN_ID;
+const SHORTURL_SPACE_ID = process.env.SHORTURL_SPACE_ID;
 
 const hook = new Webhook(DISCORD_WEBHOOK);
 
@@ -63,7 +64,7 @@ let helpers = {
         }
     },
     generateShortURL: async (url) => {
-        const shortUrl = await axios.post(SHORTURL_API + "links", { url, domain_id: SHORTURL_API_DOMAIN_ID }, {
+        const shortUrl = await axios.post(SHORTURL_API + "links", { url, domain_id: SHORTURL_API_DOMAIN_ID, space_id: SHORTURL_SPACE_ID }, {
             headers: {
                 Authorization: `Bearer ${SHORTURL_API_KEY}`
             }
@@ -148,7 +149,7 @@ let helpers = {
         await hook.send(message)
     },
     testCreds: async () => {
-        if (!DISCORD_WEBHOOK || !LOOKUP_URL || !LOOKUP_INTERVAL || !SHORTURL_API || !SHORTURL_API_KEY || !SHORTURL_API_DOMAIN_ID) {
+        if (!DISCORD_WEBHOOK || !LOOKUP_URL || !LOOKUP_INTERVAL || !SHORTURL_API || !SHORTURL_API_KEY || !SHORTURL_API_DOMAIN_ID || !SHORTURL_SPACE_ID) {
             console.log("Please provide all the required credentials in .env file");
             helpers.log("Please provide all the required credentials in .env file");
             await helpers.initPing("Please provide all the required credentials in .env file");
